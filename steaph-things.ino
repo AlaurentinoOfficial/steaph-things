@@ -24,10 +24,23 @@ uint16_t powerOnAc[67] = {9050,4450, 650,550, 650,550, 650,1650, 650,550, 650,55
 const char* ssid = "SSID";
 const char* password = "PASSWD";
 
-WiFiClient esp;
+/*====================================================================
+ *                         MQTT Configuration
+ *==================================================================== 
+ */
+const char* broker = "m11.cloudmqtt.com";
+const int port = 14581;
+const char* id = "test";
+const char* user = "zqakfvdw";
+const char* pw = "mSXZM1Lvajuw";
 
-void setup()
-{
+const char* topic_sub = "steaph/alaurentino/status";
+const char* topic_pub = "steaph/alaurentino/temp";
+
+WiFiClient esp;
+PubSubClient client(esp);
+
+void setup() {
   Serial.begin(115200);
   delay(10);
   
@@ -39,10 +52,14 @@ void setup()
   setStatus(false);
 
   connectWifi();
+  configMqtt();
 }
 
-void loop()
-{
+void loop() {
+  connectBroker();
+  publish();
+  
+  client.loop();
 }
 
 /*====================================================================
@@ -73,6 +90,65 @@ void connectWifi()
   Serial.println("WiFi connected");  
   Serial.println("IP address: ");
   Serial.println(WiFi.localIP());
+}
+
+/*====================================================================
+ *                         MQTT Configuration
+ *==================================================================== 
+ */
+
+void configMqtt()
+{
+  client.setServer(broker, port);
+  client.setCallback(mqtt_callback);
+}
+
+void connectBroker()
+{
+  connectWifi();
+  
+  while (!client.connected()) 
+  {
+    Serial.print("> Trying to connect to Broker:");
+    Serial.println(broker);
+    if (client.connect(id, user, pw)) 
+    {
+        Serial.println(">Succefuly connected to the Broker!");
+        subscribe();
+    } 
+    else
+    {
+      Serial.println("\n> Faleire connection to Broker!");
+      Serial.println("> Trying reconnection again in 2s");
+      delay(2000);
+    }
+  }
+}
+
+void mqtt_callback(char* topic, byte* payload, unsigned int length) 
+{
+    String msg;
+    for(int i = 0; i < length; i++)
+       msg += (char)payload[i];
+       
+    if(String(topic_sub).equals(String(topic))){
+      Serial.print("msg:  ");
+      Serial.println(msg);
+      setStatus(msg != "false");
+    }
+}
+
+void publish()
+{
+  float t = temperature();
+  Serial.println(String("> Publishing the temperature: ") + String(t) + "˚C");
+  client.publish(topic_pub, String(t).c_str());
+}
+
+void subscribe()
+{
+  Serial.println("\n> Subscribing the status...\n");
+  client.subscribe(topic_sub, 0);
 }
 
 /*====================================================================
