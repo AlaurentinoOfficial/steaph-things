@@ -4,33 +4,13 @@
 #include <ESP8266WebServer.h>
 #include <WiFiManager.h>
 #include <PubSubClient.h>
-#include <IRremoteESP8266.h>
-#include <IRsend.h>
 #include <ArduinoJson.h>
 
 /*====================================================================
  *                         I/O Config
  *==================================================================== 
  */
-#define lampPin D0
-#define irSenderPin D1
-#define irReceiverPin D2
-#define pirPin D5
-#define gasPin D7
-#define tempPin D8
-
-IRsend irsend(irSenderPin);
- 
-uint16_t powerOffAc[67] = {9050,4450, 650,550, 650,550, 650,1650, 650,550, 650,550, 650,550, 650,550, 650,550, 650,1650, 650,1650, 650,550, 650,1650, 650,1650, 650,1650, 650,1650, 650,1650, 650,550, 650,550, 650,550, 650,1650, 650,550, 650,550, 650,550, 650,550, 650,1650, 650,1650, 650,1650, 650,550, 650,1650, 650,1650, 650,1650, 650,1650, 650};  // NEC 20DF10EF
-uint16_t powerOnAc[67] = {9050,4450, 650,550, 650,550, 650,1650, 650,550, 650,550, 650,550, 650,550, 650,550, 650,1650, 650,1650, 650,550, 650,1650, 650,1650, 650,1650, 650,1650, 650,1650, 650,550, 650,550, 650,550, 650,1650, 650,550, 650,550, 650,550, 650,550, 650,1650, 650,1650, 650,1650, 650,550, 650,1650, 650,1650, 650,1650, 650,1650, 650};  // NEC 20DF10EF
-
-
-/*====================================================================
-                          WiFi Configuration
- *==================================================================== 
- */
-const char* ssid = "ssid";
-const char* password = "........";
+#define lampPin 0
 
 /*====================================================================
  *                        MQTT Configuration
@@ -57,16 +37,9 @@ void setup() {
   delay(10);
   
   pinMode(lampPin, OUTPUT); 
-  pinMode(irSenderPin, OUTPUT);
-  pinMode(irReceiverPin, INPUT);
-  pinMode(pirPin, INPUT);
-  pinMode(gasPin, OUTPUT);
-  pinMode(tempPin, OUTPUT);
 
   delay(20);
   setStatus(false);
-  digitalWrite(tempPin, LOW);
-  digitalWrite(gasPin, LOW);
 
   connectWifi();
   configMqtt();
@@ -74,8 +47,6 @@ void setup() {
 
 void loop() {
   connectBroker();
-  publish();
-  
   client.loop();
   Serial.println();
   delay(1000); // 10000 In production
@@ -246,20 +217,6 @@ void mqtt_callback(char* t, byte* payload, unsigned int length)
 // ##################
 // MQTT COMMUNICATION
 // ##################
-void publish()
-{
-  float t = temperature();
-  Serial.println(String("> Publishing the temperature: ") + String(t) + "˚C");
-  client.publish(topic("temp"), String(t).c_str());
-
-  const char* p = pir() ? "true" : "false";
-  Serial.println(String("> Publishing the motion: ") + p);
-  client.publish(topic("pir"), p);
-
-  float g = gas();
-  Serial.println(String("> Publishing the gas: ") + String(g));
-  client.publish(topic("gas"), String(g).c_str());
-}
 
 void subscribe()
 {
@@ -270,41 +227,6 @@ void subscribe()
 const char* topic(String suffix) {
   String buff = String(topic_prefix) + "/" + String(id) + "/" + suffix;
   return buff.c_str();
-}
-
-/*====================================================================
- *                      Sensors Configuration
- *==================================================================== 
- */
-
-// ####################################
-// GIVE IN REAL TIME THE TEMPREATURE °C
-// ####################################
-float temperature()
-{
-  digitalWrite(tempPin, HIGH);
-  delay(10);
-  
-  float temp = (analogRead(A0) * 330.0f) / 1023.0f;
-  digitalWrite(tempPin, LOW);
-  
-  return temp;
-}
-
-bool pir() 
-{
-  return digitalRead(pirPin) == HIGH;
-}
-
-float gas()
-{
-  digitalWrite(gasPin, HIGH);
-  delay(500);
-  
-  float gas = analogRead(A0);
-  digitalWrite(gasPin, LOW);
-  
-  return gas;
 }
 
 /*====================================================================
@@ -321,11 +243,9 @@ void setStatus(bool status)
   {
     Serial.println("> Environment enable!");
     digitalWrite(lampPin, LOW); // Inverse
-     irsend.sendRaw(powerOnAc, sizeof(powerOnAc), 38);
     return;
   }
 
   Serial.println("> Environment disable!");
   digitalWrite(lampPin, HIGH); // Inverse
-  irsend.sendRaw(powerOffAc, sizeof(powerOffAc), 38);
  }
