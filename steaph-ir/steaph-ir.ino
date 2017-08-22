@@ -13,7 +13,7 @@
  *==================================================================== 
  */
  
-#define irSenderPin 0
+#define irSenderPin 16
 
 IRsend irsend(irSenderPin);
 

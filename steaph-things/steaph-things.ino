@@ -12,9 +12,9 @@
  *                         I/O Config
  *==================================================================== 
  */
-#define lampPin 2
+#define lampPin D0
 #define irSenderPin D1
-#define irReceiverPin D2
+#define irReceiverPin D3
 #define pirPin D5
 #define gasPin D7
 #define tempPin D8

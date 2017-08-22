@@ -249,3 +249,4 @@ void setStatus(bool status)
   Serial.println("> Environment disable!");
   digitalWrite(lampPin, HIGH); // Inverse
  }
+
